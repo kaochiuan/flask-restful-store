@@ -14,6 +14,12 @@ class DBEnum(enum.Enum):
         return any(val == item.value for item in cls)
 
 
+class Gender(DBEnum):
+    NONE = 'none'
+    MALE = 'male'
+    FEMALE = 'female'
+
+
 class MenuTypes(DBEnum):
     CUSTOMIZED = 'customized'
     GENERAL = 'general'
@@ -49,6 +55,9 @@ class UserModel(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(120), nullable=False)
+    phone = db.Column(db.String(20), nullable=True)
+    gender = db.Column(db.Enum(*Gender.get_enum_labels()), default=Gender.NONE.value)  # gender
+    birthday = db.Column(db.Date, nullable=True)
     email = db.Column(db.String(255), nullable=False, default="")
     menu_list = db.relationship('MenuModel', back_populates='owner', lazy=True)
     order_list = db.relationship('OrderModel', back_populates='owner', lazy=True)
@@ -62,11 +71,15 @@ class UserModel(db.Model):
         return cls.query.filter_by(username=username).first()
 
     @classmethod
+    def get_by_id(cls, user_id: int):
+        return cls.query.get(user_id)
+
+    @classmethod
     def return_all(cls):
         def to_json(x):
             return {
                 'username': x.username,
-                'password': x.password
+                'email': x.email
             }
 
         return {'users': list(map(lambda x: to_json(x), UserModel.query.all()))}
@@ -135,6 +148,10 @@ class MenuModel(db.Model):
     @classmethod
     def find_by_user(cls, owner: UserModel):
         return cls.query.filter_by(owner_id=owner.id)
+
+    @classmethod
+    def get_by_owner_and_id(cls, menu_id: int, owner: UserModel):
+        return cls.query.filter_by(id=menu_id, owner_id=owner.id).one_or_none()
 
     @classmethod
     def get_by_id(cls, menu_id: int):
