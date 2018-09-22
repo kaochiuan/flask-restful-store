@@ -307,10 +307,10 @@ class OrderResource(Resource):
                 new_order.menus.append(a)
 
             new_order.save_to_db()
-            result = "successful"
+            result = {"message": "successful"}
         except Exception as ex:
             logger.error("create order failed", ex)
-            result = "failed"
+            result = {"message": "failed"}
         return result
 
     @jwt_required
@@ -318,7 +318,7 @@ class OrderResource(Resource):
         current_user = get_jwt_identity()
         logged_user = UserModel.find_by_username(current_user)
 
-        db_result = OrderModel.find_by_user(logged_user)
+        db_result = OrderModel.find_valid_by_user(logged_user)
 
         result = list()
         for item in db_result:
@@ -349,10 +349,10 @@ class SerialNumberResource(Resource):
                                         menu_id=received_link.get("menu_id"))
         try:
             serial_link.save_to_db()
-            result = "link serial success."
+            result = {"message", "link serial success."}
         except Exception as ex:
             logger.error("link serial failed", ex)
-            result = "failed"
+            result = {"message", "failed"}
 
         return result
 

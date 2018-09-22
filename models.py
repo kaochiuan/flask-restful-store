@@ -167,6 +167,7 @@ class OrderModel(db.Model):
     serial_number_list = db.relationship('SerialNumberModel', back_populates='order', lazy=True)
     owner = db.relationship('UserModel', back_populates='order_list')
     menus = db.relationship('AssociationModel', back_populates='order')
+    is_obsolete = db.Column(db.Boolean, default=False)
 
     def save_to_db(self):
         db.session.add(self)
@@ -177,8 +178,12 @@ class OrderModel(db.Model):
         return cls.query.get(order_id)
 
     @classmethod
-    def find_by_user(cls, user: UserModel):
-        return cls.query.filter_by(user_id=user.id)
+    def find_valid_by_user(cls, user: UserModel):
+        return cls.query.filter_by(user_id=user.id, is_obsolete=False)
+
+    @classmethod
+    def find_history_by_user(cls, user: UserModel):
+        return cls.query.filter_by(user_id=user.id, is_obsolete=True)
 
 
 class SerialNumberModel(db.Model):
