@@ -47,5 +47,6 @@ api.add_resource(resources.UserProfileRoute, '/user/', '/user/<int:user_id>', en
 api.add_resource(resources.UserProfile, '/user_profile')
 api.add_resource(resources.SecretResource, '/secret')
 api.add_resource(resources.MenuResource, '/menu')
+api.add_resource(resources.OrderResourceRoute, '/order/<int:order_id>', endpoint='order_id')
 api.add_resource(resources.OrderResource, '/order')
 api.add_resource(resources.SerialNumberResource, '/serial_number')

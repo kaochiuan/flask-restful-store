@@ -285,6 +285,30 @@ class MenuResource(Resource):
         return result
 
 
+class OrderResourceRoute(Resource):
+    @jwt_required
+    def get(self, order_id=None):
+        if not order_id:
+            return {'message': 'user not found'}, 404
+
+        order = OrderModel.get_by_id(order_id)
+        if order:
+            menu_list = list()
+            for menu in order.menus:
+                menu_list.append({'menu_id': menu.menu.id,
+                                  'menu_name': menu.menu.name,
+                                  'taste_level': menu.menu.taste_level,
+                                  'water_level': menu.menu.water_level,
+                                  'foam_level': menu.menu.foam_level,
+                                  'grind_size': menu.menu.grind_size,
+                                  'menu_type': menu.menu.menu_type,
+                                  'counts': menu.counts})
+            return {'order_id': order.id, 'order_contents': menu_list,
+                    'order_date': order.create_date.strftime("%Y-%m-%d %H:%M:%S")}
+        else:
+            return {'message': 'user not found'}, 404
+
+
 class OrderResource(Resource):
     order_args = {
         'message': fields.Str(required=True),
@@ -324,8 +348,16 @@ class OrderResource(Resource):
         for item in db_result:
             menu_list = list()
             for menu in item.menus:
-                menu_list.append({'menu_id': menu.menu.id, 'counts': menu.counts})
-            result.append({'order_id': item.id, 'order_contents': menu_list})
+                menu_list.append({'menu_id': menu.menu.id,
+                                  'menu_name': menu.menu.name,
+                                  'taste_level': menu.menu.taste_level,
+                                  'water_level': menu.menu.water_level,
+                                  'foam_level': menu.menu.foam_level,
+                                  'grind_size': menu.menu.grind_size,
+                                  'menu_type': menu.menu.menu_type,
+                                  'counts': menu.counts})
+            result.append({'order_id': item.id, 'order_contents': menu_list,
+                           'order_date': item.create_date.strftime("%Y-%m-%d %H:%M:%S")})
 
         return result
 
