@@ -238,7 +238,7 @@ class MenuResource(Resource):
             new_menu.save_to_db()
             return {'message': 'New menu created successfully.'}
         except Exception as ex:
-            logger.error('Menu registration failed.', ex)
+            logger.exception('Menu registration failed.')
             return {'message': 'Something went wrong'}, 500
 
     @use_args(menu_args, locations=('form', 'json'))
@@ -263,7 +263,7 @@ class MenuResource(Resource):
                 db_result.save_to_db()
                 return {'message': 'menu update successfully.'}
             except Exception as ex:
-                logger.error('Menu update failed.', ex)
+                logger.exception('Menu update failed.')
                 return {'message': 'Something went wrong'}, 500
         else:
             return {'message': 'menu item not found.'}, 404
@@ -306,6 +306,18 @@ class OrderResourceRoute(Resource):
             return {'order_id': order.id, 'order_contents': menu_list,
                     'order_date': order.create_date.strftime("%Y-%m-%d %H:%M:%S")}
         else:
+            return {'message': 'order not found'}, 404
+
+    def patch(self, order_id=None):
+        if not order_id:
+            return {'message': 'order not found'}, 404
+
+        order = OrderModel.get_by_id(order_id)
+        if order:
+            order.is_obsolete = True
+            order.save_to_db()
+            return {'order_id': order.id, 'order_obsoleted': order.is_obsolete}
+        else:
             return {'message': 'user not found'}, 404
 
 
@@ -333,7 +345,7 @@ class OrderResource(Resource):
             new_order.save_to_db()
             result = {"message": "successful"}
         except Exception as ex:
-            logger.error("create order failed", ex)
+            logger.exception("create order failed")
             result = {"message": "failed"}
         return result
 
@@ -381,10 +393,10 @@ class SerialNumberResource(Resource):
                                         menu_id=received_link.get("menu_id"))
         try:
             serial_link.save_to_db()
-            result = {"message", "link serial success."}
+            result = {"message": "link serial success."}
         except Exception as ex:
-            logger.error("link serial failed", ex)
-            result = {"message", "failed"}
+            logger.excption("link serial failed")
+            result = {"message": "failed"}
 
         return result
 
