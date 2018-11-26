@@ -4,10 +4,12 @@ from flask_restful import Resource
 from models import UserModel, RevokedTokenModel, MenuModel, OrderModel, AssociationModel, SerialNumberModel
 from models import MenuTypes, FoamLevels, SizeLevels, TasteLevels, WaterLevels, Gender
 import logging
+import datetime
 from logging.handlers import RotatingFileHandler
 from webargs.flaskparser import use_args
 from webargs import validate
 from marshmallow import Schema, fields
+
 
 logging.basicConfig(datefmt='%m-%d %H:%M',
                     format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
@@ -293,18 +295,21 @@ class OrderResourceRoute(Resource):
 
         order = OrderModel.get_by_id(order_id)
         if order:
-            menu_list = list()
-            for menu in order.menus:
-                menu_list.append({'menu_id': menu.menu.id,
-                                  'menu_name': menu.menu.name,
-                                  'taste_level': menu.menu.taste_level,
-                                  'water_level': menu.menu.water_level,
-                                  'foam_level': menu.menu.foam_level,
-                                  'grind_size': menu.menu.grind_size,
-                                  'menu_type': menu.menu.menu_type,
-                                  'counts': menu.counts})
-            return {'order_id': order.id, 'order_contents': menu_list,
-                    'order_date': order.create_date.strftime("%Y-%m-%d %H:%M:%S")}
+            if order.is_obsolete and order.id != 1:
+                return {'message': 'order was obsoleted'}, 400
+            else:
+                menu_list = list()
+                for menu in order.menus:
+                    menu_list.append({'menu_id': menu.menu.id,
+                                      'menu_name': menu.menu.name,
+                                      'taste_level': menu.menu.taste_level,
+                                      'water_level': menu.menu.water_level,
+                                      'foam_level': menu.menu.foam_level,
+                                      'grind_size': menu.menu.grind_size,
+                                      'menu_type': menu.menu.menu_type,
+                                      'counts': menu.counts})
+                return {'order_id': order.id, 'order_contents': menu_list,
+                        'order_date': order.create_date.strftime("%Y-%m-%d %H:%M:%S")}
         else:
             return {'message': 'order not found'}, 404
 
@@ -316,7 +321,7 @@ class OrderResourceRoute(Resource):
         if order:
             order.is_obsolete = True
             order.save_to_db()
-            return {'order_id': order.id, 'order_obsoleted': order.is_obsolete}
+            return {'order_id': order.id, 'is_obsoleted': order.is_obsolete}
         else:
             return {'message': 'user not found'}, 404
 
@@ -334,7 +339,9 @@ class OrderResource(Resource):
         logged_user = UserModel.find_by_username(current_user)
 
         try:
-            new_order = OrderModel(user_id=logged_user.id, customized_message=received_item.get("message"))
+            new_order = OrderModel(user_id=logged_user.id,
+                                   customized_message=received_item.get("message"),
+                                   create_date=datetime.datetime.utcnow())
 
             for item in received_item.get("order"):
                 found_menu = MenuModel.get_by_id(item.get("menu_id"))
@@ -382,33 +389,59 @@ class SerialNumberResource(Resource):
     }
 
     serial_by_order_arg = {
-        'order_id': fields.Int(required=True)
+        'order_id': fields.Int(required=False),
+        'serial_number': fields.Str(required=False)
     }
 
-    @use_args(serial_args)
+    @use_args(serial_args, locations=('form', 'json'))
     @jwt_required
     def post(self, received_link):
-        serial_link = SerialNumberModel(order_id=received_link.get("order_id"),
-                                        serial_number=received_link.get("serial_number"),
-                                        menu_id=received_link.get("menu_id"))
-        try:
-            serial_link.save_to_db()
-            result = {"message": "link serial success."}
-        except Exception as ex:
-            logger.excption("link serial failed")
-            result = {"message": "failed"}
+        order_id = received_link.get("order_id")
+        serial_number = received_link.get("serial_number")
+        menu_id = received_link.get("menu_id")
+        duplicated = SerialNumberModel.find_duplicate_link(order_id=order_id,
+                                                           serial_number=serial_number,
+                                                           menu_id=menu_id)
+
+        if not duplicated:
+            serial_link = SerialNumberModel(order_id=order_id,
+                                            serial_number=serial_number,
+                                            menu_id=menu_id)
+            try:
+                serial_link.save_to_db()
+                result = {"message": "link serial success."}
+            except Exception as ex:
+                logger.excption("link serial failed")
+                result = {"message": "link failed", "reason": "exception raised."}
+        else:
+            result = {"message": "link failed", "reason": "duplicated link information"}
 
         return result
 
     @use_args(serial_by_order_arg)
     @jwt_required
     def get(self, received):
-        order = OrderModel.get_by_id(order_id=received.get('order_id'))
-        db_result = SerialNumberModel.find_by_order(order=order)
+        order_id = received.get('order_id')
+        serial_number_str = received.get('serial_number')
 
         result = list()
+        if order_id:
+            order = OrderModel.get_by_id(order_id=received.get('order_id'))
+            if order:
+                db_result = SerialNumberModel.find_by_order(order=order)
+                for item in db_result:
+                    result.append({'serial_number': item.serial_number, 'menu_id': item.menu.id, 'order_id': item.order.id})
+            else:
+                return {'message': 'order_id not found'}, 404
+        elif serial_number_str:
+            serial = SerialNumberModel.get_by_serial_number(serial_number=serial_number_str)
 
-        for item in db_result:
-            result.append({'serial_number': item.serial_number, 'menu_id': item.menu.id})
+            if serial:
+                logging.error(serial.order.customized_message)
+                result = {'serial_number': serial.serial_number, 'customized_message': serial.order.customized_message}
+            else:
+                return {'message': 'serial_number not found'}, 404
+        else:
+            return {'message': 'order or serial is required.'}, 400
 
         return result
