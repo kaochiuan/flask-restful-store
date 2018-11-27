@@ -133,11 +133,6 @@ class UserLogoutRefresh(Resource):
             return {'message': 'Something went wrong'}, 500
 
 
-class TokenRefresh(Resource):
-    def post(self):
-        return {'message': 'Token refresh'}
-
-
 class UserProfileRoute(Resource):
     @jwt_required
     def get(self, user_id=None):
@@ -192,16 +187,6 @@ class UserProfile(Resource):
 
         else:
             return {'message': 'user not found'}, 404
-
-
-class SecretResource(Resource):
-    @jwt_required
-    def get(self):
-        current_user = get_jwt_identity()
-        return {
-            'user': current_user,
-            'answer': 42
-        }
 
 
 class TokenRefresh(Resource):

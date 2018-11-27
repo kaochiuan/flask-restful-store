@@ -2,7 +2,9 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_restful import Api
 from flask_jwt_extended import JWTManager
-from flask_migrate import Migrate, MigrateCommand
+from flask_migrate import Migrate
+import models
+import resources
 
 
 app = Flask(__name__)
@@ -35,8 +37,6 @@ def check_if_token_in_blacklist(decrypted_token):
     return models.RevokedTokenModel.is_jti_blacklisted(jti)
 
 
-import views, models, resources
-
 api.add_resource(resources.UserRegistration, '/user/registration')
 api.add_resource(resources.UserLogin, '/login')
 api.add_resource(resources.UserLogoutAccess, '/logout/access')
@@ -45,7 +45,6 @@ api.add_resource(resources.UserResetPassword, '/user/reset_password')
 api.add_resource(resources.TokenRefresh, '/token/refresh')
 api.add_resource(resources.UserProfileRoute, '/user/', '/user/<int:user_id>', endpoint='user_id')
 api.add_resource(resources.UserProfile, '/user_profile')
-api.add_resource(resources.SecretResource, '/secret')
 api.add_resource(resources.MenuResource, '/menu')
 api.add_resource(resources.OrderResourceRoute, '/order/<int:order_id>', endpoint='order_id')
 api.add_resource(resources.OrderResource, '/order')
