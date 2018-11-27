@@ -3,8 +3,6 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_restful import Api
 from flask_jwt_extended import JWTManager
 from flask_migrate import Migrate
-import models
-import resources
 
 
 app = Flask(__name__)
@@ -35,6 +33,10 @@ app.config['JWT_EXPIRATION_DELTA'] = 3600
 def check_if_token_in_blacklist(decrypted_token):
     jti = decrypted_token['jti']
     return models.RevokedTokenModel.is_jti_blacklisted(jti)
+
+
+import models
+import resources
 
 
 api.add_resource(resources.UserRegistration, '/user/registration')
