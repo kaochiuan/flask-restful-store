@@ -27,6 +27,7 @@ jwt = JWTManager(app)
 app.config['JWT_BLACKLIST_ENABLED'] = True
 app.config['JWT_BLACKLIST_TOKEN_CHECKS'] = ['access', 'refresh']
 app.config['JWT_EXPIRATION_DELTA'] = 3600
+app.config['PROPAGATE_EXCEPTIONS'] = True
 
 
 @jwt.token_in_blacklist_loader
