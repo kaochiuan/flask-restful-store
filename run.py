@@ -1,3 +1,4 @@
+from datetime import timedelta
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_restful import Api
@@ -11,6 +12,7 @@ api = Api(app)
 app.config['SQLALCHEMY_DATABASE_URI'] = "mysql://iptech:CoffeeIpTech@127.0.0.1/coffee_cloud?charset=utf8&local_infile=1"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'Coffee@IpTech'
+app.config['PROPAGATE_EXCEPTIONS'] = True
 
 db = SQLAlchemy(app)
 migrate = Migrate(app=app, db=db)
@@ -26,8 +28,8 @@ jwt = JWTManager(app)
 
 app.config['JWT_BLACKLIST_ENABLED'] = True
 app.config['JWT_BLACKLIST_TOKEN_CHECKS'] = ['access', 'refresh']
-app.config['JWT_EXPIRATION_DELTA'] = 3600
-app.config['PROPAGATE_EXCEPTIONS'] = True
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(minutes=15)
+app.config['JWT_REFRESH_TOKEN_EXPIRES'] = timedelta(days=30)
 
 
 @jwt.token_in_blacklist_loader
