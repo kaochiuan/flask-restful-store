@@ -7,14 +7,14 @@ from flask_migrate import Migrate
 
 
 app = Flask(__name__)
-api = Api(app)
+api = Api(app=app)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = "mysql://iptech:CoffeeIpTech@127.0.0.1/coffee_cloud?charset=utf8&local_infile=1"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'Coffee@IpTech'
 app.config['PROPAGATE_EXCEPTIONS'] = True
 
-db = SQLAlchemy(app)
+db = SQLAlchemy(app, use_native_unicode='utf8')
 migrate = Migrate(app=app, db=db)
 
 
