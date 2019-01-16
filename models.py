@@ -14,6 +14,11 @@ class DBEnum(enum.Enum):
         return any(val == item.value for item in cls)
 
 
+class CoffeeOption(DBEnum):
+    CoffeeA = 'coffee_A'
+    CoffeeB = 'coffee_B'
+
+
 class Gender(DBEnum):
     NONE = 'none'
     MALE = 'male'
@@ -131,6 +136,7 @@ class MenuModel(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255))
     menu_type = db.Column(db.Enum(*MenuTypes.get_enum_labels()), default=MenuTypes.CUSTOMIZED.value)  # menu type
+    coffee_option = db.Column(db.Enum(*CoffeeOption.get_enum_labels()), default=CoffeeOption.CoffeeA.value)  # coffee option
     owner_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     taste_level = db.Column(db.Enum(*TasteLevels.get_enum_labels()), default=TasteLevels.STANDARD.value)  # taste level
     water_level = db.Column(db.Enum(*WaterLevels.get_enum_labels()), default=WaterLevels.STANDARD.value)  # water level
@@ -201,6 +207,10 @@ class SerialNumberModel(db.Model):
         db.session.commit()
 
     @classmethod
+    def find_duplicate_link(cls, order_id: int, serial_number: str, menu_id: int):
+        return cls.query.filter_by(order_id=order_id, serial_number=serial_number, menu_id=menu_id).first()
+
+    @classmethod
     def find_by_order(cls, order: OrderModel):
         return cls.query.filter_by(order_id=order.id)
 
@@ -214,6 +224,6 @@ class SerialNumberModel(db.Model):
 
         result = None
         if db_result:
-            result = {'order_id': db_result.order_id, 'menu_id': db_result.menu_id}
+            result = db_result
 
         return result

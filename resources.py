@@ -1,11 +1,10 @@
 from flask_jwt_extended import (create_access_token, create_refresh_token, jwt_required, jwt_refresh_token_required,
                                 get_jwt_identity, get_raw_jwt)
 from flask_restful import Resource
+from models import MenuTypes, FoamLevels, SizeLevels, TasteLevels, WaterLevels, Gender, CoffeeOption
 from models import UserModel, RevokedTokenModel, MenuModel, OrderModel, AssociationModel, SerialNumberModel
-from models import MenuTypes, FoamLevels, SizeLevels, TasteLevels, WaterLevels, Gender
 import logging
 import datetime
-from logging.handlers import RotatingFileHandler
 from webargs.flaskparser import use_args
 from webargs import validate
 from marshmallow import Schema, fields
@@ -13,8 +12,7 @@ from marshmallow import Schema, fields
 
 logging.basicConfig(datefmt='%m-%d %H:%M',
                     format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
-                    handlers=[RotatingFileHandler(filename='coffee_cloud.log', mode='a', maxBytes=1 * 1024 * 1024,
-                                                  backupCount=7, encoding='utf8'), ])
+                    handlers=[logging.StreamHandler()])
 
 logger = logging.getLogger(__name__)
 logger.setLevel(level=logging.INFO)
@@ -55,7 +53,7 @@ class UserRegistration(Resource):
                 'access_token': access_token,
                 'refresh_token': refresh_token
             }
-        except:
+        except (Exception,):
             return {'message': 'Something went wrong'}, 500
 
 
@@ -86,7 +84,7 @@ class UserLogoutAccess(Resource):
             revoked_token = RevokedTokenModel(jti=jti)
             revoked_token.add()
             return {'message': 'Access token has been revoked'}
-        except:
+        except (Exception,):
             return {'message': 'Something went wrong'}, 500
 
 
@@ -115,7 +113,7 @@ class UserResetPassword(Resource):
                     'access_token': access_token,
                     'refresh_token': refresh_token
                 }
-            except:
+            except (Exception,):
                 return {'message': 'Something went wrong'}, 500
         else:
             return {'message': 'username or password is incorrect'}, 400
@@ -129,7 +127,7 @@ class UserLogoutRefresh(Resource):
             revoked_token = RevokedTokenModel(jti=jti)
             revoked_token.add()
             return {'message': 'Refresh token has been revoked'}
-        except:
+        except (Exception,):
             return {'message': 'Something went wrong'}, 500
 
 
@@ -182,7 +180,7 @@ class UserProfile(Resource):
                     return {'message': 'user {}: profile has been updated.'.format(user.username)}
                 else:
                     return {'message': 'wrong parameters'}, 400
-            except:
+            except (Exception,):
                 return {'message': 'Something went wrong'}, 500
 
         else:
@@ -202,6 +200,7 @@ class MenuResource(Resource):
         'menu_id': fields.Int(required=False),
         'name': fields.Str(required=True),
         'menu_type': fields.Str(required=True, validate=validate.OneOf(MenuTypes.get_enum_labels())),
+        'coffee_option': fields.Str(required=True, validate=validate.OneOf(CoffeeOption.get_enum_labels())),
         'taste_level': fields.Str(required=True, validate=validate.OneOf(TasteLevels.get_enum_labels())),
         'water_level': fields.Str(required=True, validate=validate.OneOf(WaterLevels.get_enum_labels())),
         'foam_level': fields.Str(required=True, validate=validate.OneOf(FoamLevels.get_enum_labels())),
@@ -220,11 +219,12 @@ class MenuResource(Resource):
                              water_level=args.get('water_level'),
                              foam_level=args.get('foam_level'),
                              grind_size=args.get('grind_size'),
+                             coffee_option=args.get('coffee_option'),
                              owner_id=logged_user.id)
         try:
             new_menu.save_to_db()
             return {'message': 'New menu created successfully.'}
-        except Exception as ex:
+        except (Exception,):
             logger.exception('Menu registration failed.')
             return {'message': 'Something went wrong'}, 500
 
@@ -243,13 +243,14 @@ class MenuResource(Resource):
             try:
                 db_result.name = args.get('name')
                 db_result.menu_type = args.get('menu_type')
+                db_result.coffee_option = args.get('coffee_option')
                 db_result.taste_level = args.get('taste_level')
                 db_result.water_level = args.get('water_level')
                 db_result.foam_level = args.get('foam_level')
                 db_result.grind_size = args.get('grind_size')
                 db_result.save_to_db()
                 return {'message': 'menu update successfully.'}
-            except Exception as ex:
+            except (Exception,):
                 logger.exception('Menu update failed.')
                 return {'message': 'Something went wrong'}, 500
         else:
@@ -268,12 +269,11 @@ class MenuResource(Resource):
                 {'menu_id': item.id, 'name': item.name,
                  'water_level': item.water_level, 'foam_level': item.foam_level,
                  'taste_level': item.taste_level, 'grind_size': item.grind_size,
-                 'menu_type': item.menu_type})
+                 'menu_type': item.menu_type, 'coffee_option': item.coffee_option})
         return result
 
 
 class OrderResourceRoute(Resource):
-    @jwt_required
     def get(self, order_id=None):
         if not order_id:
             return {'message': 'user not found'}, 404
@@ -287,6 +287,7 @@ class OrderResourceRoute(Resource):
                 for menu in order.menus:
                     menu_list.append({'menu_id': menu.menu.id,
                                       'menu_name': menu.menu.name,
+                                      'coffee_option': menu.menu.coffee_option,
                                       'taste_level': menu.menu.taste_level,
                                       'water_level': menu.menu.water_level,
                                       'foam_level': menu.menu.foam_level,
@@ -336,7 +337,7 @@ class OrderResource(Resource):
 
             new_order.save_to_db()
             result = {"message": "successful"}
-        except Exception as ex:
+        except (Exception,):
             logger.exception("create order failed")
             result = {"message": "failed"}
         return result
@@ -359,6 +360,7 @@ class OrderResource(Resource):
                                   'foam_level': menu.menu.foam_level,
                                   'grind_size': menu.menu.grind_size,
                                   'menu_type': menu.menu.menu_type,
+                                  'coffee_option': menu.menu.coffee_option,
                                   'counts': menu.counts})
             result.append({'order_id': item.id, 'order_contents': menu_list,
                            'order_date': item.create_date.strftime("%Y-%m-%d %H:%M:%S")})
@@ -379,7 +381,6 @@ class SerialNumberResource(Resource):
     }
 
     @use_args(serial_args, locations=('form', 'json'))
-    @jwt_required
     def post(self, received_link):
         order_id = received_link.get("order_id")
         serial_number = received_link.get("serial_number")
@@ -395,16 +396,16 @@ class SerialNumberResource(Resource):
             try:
                 serial_link.save_to_db()
                 result = {"message": "link serial success."}
-            except Exception as ex:
-                logger.excption("link serial failed")
+            except (Exception,):
+                logger.exception("link serial failed")
                 result = {"message": "link failed", "reason": "exception raised."}
         else:
             result = {"message": "link failed", "reason": "duplicated link information"}
 
         return result
 
-    @use_args(serial_by_order_arg)
     @jwt_required
+    @use_args(serial_by_order_arg)
     def get(self, received):
         order_id = received.get('order_id')
         serial_number_str = received.get('serial_number')
